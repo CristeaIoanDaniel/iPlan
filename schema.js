@@ -25,7 +25,7 @@ const initSchema = async () => {
       category VARCHAR(50) NOT NULL, -- 'hotel', 'restaurant', 'activity', 'stay'
       location VARCHAR(150) NOT NULL,
       price_per_unit DECIMAL(10, 2) DEFAULT 0.00,
-      unit_type VARCHAR(20) DEFAULT 'night',
+      unit_type VARCHAR(20) DEFAULT 'xxx',
       embedding VECTOR(1536)
     );
 
