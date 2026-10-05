@@ -4,22 +4,6 @@
  */
 exports.up = async function(knex) {
     const existingTables = [];
-    for (const table of ['itineraries', 'services', 'bookings']) {
-        existingTables.push(await knex.schema.hasTable(table));
-    }
-
-    if (existingTables.every(Boolean)) {
-        console.warn('Existing itineraries, services, and bookings tables found; preserving them.');
-        return;
-    }
-
-    if (existingTables.some(Boolean)) {
-        throw new Error(
-            'Cannot create the initial schema: only some of itineraries, services, and bookings exist. ' +
-            'Resolve the partial schema before running migrations.'
-        );
-    }
-
     await knex.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
     await knex.schema.createTable('itineraries',(table)=>{
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
