@@ -13,11 +13,17 @@ const validate = (schema) => (req, res, next) => {
       message: err.message,
     }));
 
-    return next(new AppError('Validation failed', 400, formattedErrors));
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Validation failed',
+      errors: formattedErrors, 
+    });
   }
-  if(result.data.body ) req.body= result.data.body;
-  if(result.data.query) req.query=result.data.query;
-  if(result.data.params) req.params=result.data.params;
+  if (result.data.body) req.body = result.data.body;
+  if (result.data.query) req.query = result.data.query;
+  if (result.data.params) req.params = result.data.params;
+
   next();
 };
-module.exports=validate;
+
+module.exports = { validate }; 
