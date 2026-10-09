@@ -1,4 +1,4 @@
-require ('dotenv').config();
+require ('dotenv').config({path:'./vault.env'});
 module.exports={
     development:{
         client:'pg',

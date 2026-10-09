@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
+const {authenticate } =require ( '../middleware/auth.middleware');
 router.get('/', async (req, res) => {
     try {
         const queryText = 'SELECT * FROM itineraries ORDER BY created_at DESC';
@@ -27,7 +28,7 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
-router.post('/', async (req, res) => {
+router.post('/', authenticate,async (req, res) => {
     const { title, description, destination, start_date, end_date } = req.body;
 
     if (!title || !destination) {
@@ -36,11 +37,11 @@ router.post('/', async (req, res) => {
 
     try {
         const queryText = `
-            INSERT INTO itineraries (title, description, destination, start_date, end_date)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO itineraries (user_id, title, description, destination, start_date, end_date)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *;
         `;
-        const values = [title, description, destination, start_date, end_date];
+        const values = [req.user.id, title, description, destination, start_date, end_date];
         const { rows } = await pool.query(queryText, values);
 
         res.status(201).json({ success: true, data: rows[0] });
@@ -49,7 +50,7 @@ router.post('/', async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const { title, description, destination, start_date, end_date } = req.body;
 
@@ -62,9 +63,10 @@ router.put('/:id', async (req, res) => {
                 start_date = COALESCE($4, start_date),
                 end_date = COALESCE($5, end_date)
             WHERE id = $6
+            AND user_id =$7
             RETURNING *;
         `;
-        const values = [title, description, destination, start_date, end_date, id];
+        const values = [title, description, destination, start_date, end_date, id, req.user.id];
         const { rows } = await pool.query(queryText, values);
 
         if (rows.length === 0) {
@@ -77,11 +79,11 @@ router.put('/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     try {
-        const queryText = 'DELETE FROM itineraries WHERE id = $1 RETURNING *';
-        const { rows } = await pool.query(queryText, [id]);
+        const queryText = 'DELETE FROM itineraries WHERE id = $1 AND user_id=$2 RETURNING *';
+        const { rows } = await pool.query(queryText, [id,req.user.id]);
 
         if (rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Itinerary not found' });
