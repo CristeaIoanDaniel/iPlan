@@ -1,8 +1,13 @@
-const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   createItinerarySchema,
+  updateItinerarySchema,
+  itineraryIdSchema,
 } = require('./src/schemas/itinerary.schema');
+const {
+  createItemSchema,
+  updateItemSchema,
+} = require('./src/schemas/itinerary-item.schema');
 const {
   registerSchema,
   loginSchema,
@@ -15,6 +20,7 @@ const {
 
 const validItinerary = {
   title: 'Weekend in Rome',
+  destination: 'Rome',
   start_date: '2026-10-10',
   end_date: '2026-10-12',
 };
@@ -75,6 +81,79 @@ test('itinerary validation applies defaults to valid input', () => {
   assert.equal(request.body.is_public, false);
 });
 
+test('itinerary validation trims text and rejects unknown or object-shaped input', () => {
+  const validResult = createItinerarySchema.safeParse({
+    body: {
+      ...validItinerary,
+      title: ' Weekend in Rome ',
+      destination: ' Rome ',
+    },
+  });
+
+  assert.equal(validResult.success, true);
+  assert.equal(validResult.data.body.title, 'Weekend in Rome');
+  assert.equal(validResult.data.body.destination, 'Rome');
+
+  const invalidResult = createItinerarySchema.safeParse({
+    body: {
+      ...validItinerary,
+      title: { $ne: null },
+      user_id: 'attacker-controlled-id',
+    },
+  });
+
+  assert.equal(invalidResult.success, false);
+});
+
+test('itinerary update validation requires fields and a UUID route ID', () => {
+  assert.equal(updateItinerarySchema.safeParse({
+    params: { id: 'not-a-uuid' },
+    body: { title: 'Updated title' },
+  }).success, false);
+
+  assert.equal(updateItinerarySchema.safeParse({
+    params: { id: '123e4567-e89b-12d3-a456-426614174000' },
+    body: {},
+  }).success, false);
+
+  assert.equal(itineraryIdSchema.safeParse({
+    params: { id: '123e4567-e89b-12d3-a456-426614174000' },
+  }).success, true);
+});
+
+test('itinerary item schemas require dated item ranges and leave notes undated', () => {
+  const params = { id: '123e4567-e89b-12d3-a456-426614174000' };
+
+  assert.equal(createItemSchema.safeParse({
+    params,
+    body: {
+      type: 'flight',
+      title: 'Flight',
+      starts_at: '2026-10-10T09:00:00Z',
+      ends_at: '2026-10-10T12:00:00Z',
+    },
+  }).success, true);
+
+  assert.equal(createItemSchema.safeParse({
+    params,
+    body: { type: 'activity', title: 'Missing dates' },
+  }).success, false);
+
+  assert.equal(createItemSchema.safeParse({
+    params,
+    body: {
+      type: 'note',
+      title: 'Packing list',
+      starts_at: '2026-10-10T09:00:00Z',
+    },
+  }).success, false);
+
+  assert.equal(updateItemSchema.safeParse({
+    params: { ...params, itemId: '123e4567-e89b-12d3-a456-426614174001' },
+    body: { ends_at: '2026-10-10T08:00:00Z' },
+  }).success, true);
+});
+
 test('registration schema rejects invalid email and weak password', () => {
   const result = registerSchema.safeParse({
     body: {
@@ -101,6 +180,19 @@ test('registration schema accepts valid credentials and trims values', () => {
   assert.equal(result.success, true);
   assert.equal(result.data.body.name, 'Alex');
   assert.equal(result.data.body.email, 'alex@example.com');
+});
+
+test('auth schemas reject unexpected and object-shaped properties', () => {
+  const result = registerSchema.safeParse({
+    body: {
+      name: 'Alex',
+      email: { $ne: null },
+      password: 'StrongPass1',
+      role: 'admin',
+    },
+  });
+
+  assert.equal(result.success, false);
 });
 
 test('login schema requires an email and password', () => {

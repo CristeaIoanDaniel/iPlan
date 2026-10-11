@@ -26,7 +26,16 @@ const authenticate = (req, res, next) => {
     }
 };
 
+const optionalAuthenticate = (req, res, next) => {
+    if (!req.headers.authorization) {
+        return next();
+    }
+
+    return authenticate(req, res, next);
+};
+
 module.exports = {
     generateToken,
     authenticate,
+    optionalAuthenticate,
 };
